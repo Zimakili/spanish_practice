@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herramienta de Práctica de Vocabulario Español</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Calm Learning -->
+    <!-- Application Structure Plan: A single-page application with a clear, dual-mode structure selected via tabs: "Tarjetas (Flashcards)" and "Prueba de Traducción (Quiz)". This design directly addresses the user's request for two distinct practice methods. The flashcard mode is for initial learning and review, while the quiz mode is for testing knowledge retention. Filters for word rank and part of speech are included in both modes to allow for focused, customized study sessions, catering to learners at different levels. The structure is task-oriented, making it highly intuitive for a student to choose how they want to engage with the vocabulary. -->
+    <!-- Visualization & Content Choices: 1. Flashcards (HTML/CSS/JS): Goal=Inform/Memorize, Interaction=Flip/Next/Previous/Filter. Justification=Classic and effective method for vocabulary learning. The flip animation provides satisfying feedback. 2. Translation Quiz (HTML/JS): Goal=Test/Reinforce, Interaction=Multiple Choice Selection/Next/Filter. Justification=Actively tests recall and recognition, which is a step beyond passive review. Immediate feedback and scoring gamify the experience. No charts are needed as the goal is practice, not data analysis. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .perspective {
+            perspective: 1000px;
+        }
+        .flip-card-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .flip-card.flipped .flip-card-inner {
+            transform: rotateY(180deg);
+        }
+        .flip-card-front, .flip-card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e7e5e4;
+        }
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+        .active-nav {
+            background-color: #0d9488;
+            color: white;
+        }
+        .inactive-nav {
+            color: #57534e;
+            background-color: #f5f5f4;
+        }
+        .correct-answer {
+            background-color: #dcfce7 !important;
+            border-color: #22c55e !important;
+        }
+        .wrong-answer {
+            background-color: #fee2e2 !important;
+            border-color: #ef4444 !important;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-stone-100 text-stone-800">
+    <div class="container mx-auto p-4 sm:p-6 md:p-8 max-w-4xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-teal-800">Práctica de Vocabulario</h1>
+            <p class="text-lg text-stone-600 mt-2">Mejora tu español con tarjetas y pruebas interactivas.</p>
+        </header>
+
+        <nav class="flex justify-center mb-8 bg-white p-2 rounded-lg shadow-sm border border-stone-200">
+            <button id="flashcardBtn" class="px-4 py-2 text-sm font-semibold rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 active-nav">Tarjetas (Flashcards)</button>
+            <button id="quizBtn" class="px-4 py-2 text-sm font-semibold rounded-md hover:bg-stone-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-50 ml-4 inactive-nav">Prueba de Traducción</button>
+        </nav>
+
+        <main>
+            <!-- Flashcard View -->
+            <div id="flashcardView">
+                <div class="bg-white p-6 rounded-lg shadow-md border border-stone-200 mb-6">
+                    <h2 class="text-xl font-semibold text-teal-700 mb-4">Opciones de Estudio</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="flashcard-posFilter" class="block text-sm font-medium text-stone-700">Categoría Gramatical</label>
+                            <select id="flashcard-posFilter" class="mt-1 block w-full p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="flashcard-rankFilter" class="block text-sm font-medium text-stone-700">Rango de Palabras</label>
+                             <select id="flashcard-rankFilter" class="mt-1 block w-full p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                                <option value="1-5000">Todas (1-5000)</option>
+                                <option value="1-100">1-100</option>
+                                <option value="101-500">101-500</option>
+                                <option value="501-1000">501-1000</option>
+                                <option value="1001-2500">1001-2500</option>
+                                <option value="2501-5000">2501-5000</option>
+                            </select>
+                        </div>
+                    </div>
+                     <p id="flashcard-count" class="text-sm text-stone-500 text-center mt-4"></p>
+                </div>
+
+                <div class="perspective h-80">
+                    <div id="flashcard" class="flip-card w-full h-full cursor-pointer">
+                        <div class="flip-card-inner">
+                            <div id="flashcard-front" class="flip-card-front bg-white">
+                                <!-- Spanish word here -->
+                            </div>
+                            <div id="flashcard-back" class="flip-card-back bg-stone-50">
+                                <!-- English translation and details here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <div class="flex justify-between items-center mt-6">
+                    <button id="prevCard" class="px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 focus:ring-4 focus:outline-none focus:ring-teal-300">Anterior</button>
+                    <div id="card-counter" class="text-stone-600 font-medium"></div>
+                    <button id="nextCard" class="px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 focus:ring-4 focus:outline-none focus:ring-teal-300">Siguiente</button>
+                </div>
+            </div>
+
+            <!-- Quiz View -->
+            <div id="quizView" class="hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md border border-stone-200 mb-6">
+                    <h2 class="text-xl font-semibold text-teal-700 mb-4">Configurar Prueba</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div>
+                            <label for="quiz-posFilter" class="block text-sm font-medium text-stone-700">Categoría Gramatical</label>
+                            <select id="quiz-posFilter" class="mt-1 block w-full p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="quiz-rankFilter" class="block text-sm font-medium text-stone-700">Rango de Palabras</label>
+                             <select id="quiz-rankFilter" class="mt-1 block w-full p-2 border border-stone-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500">
+                                <option value="1-5000">Todas (1-5000)</option>
+                                <option value="1-100">1-100</option>
+                                <option value="101-500">101-500</option>
+                                <option value="501-1000">501-1000</option>
+                                <option value="1001-2500">1001-2500</option>
+                                <option value="2501-5000">2501-5000</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="startQuizBtn" class="w-full mt-4 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 focus:ring-4 focus:outline-none focus:ring-teal-300">Comenzar Prueba</button>
+                </div>
+                
+                <div id="quiz-container" class="hidden">
+                    <div class="bg-white p-6 rounded-lg shadow-md border border-stone-200">
+                         <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-semibold text-teal-700">Traduce la palabra:</h3>
+                            <div id="quiz-score" class="text-lg font-bold text-stone-700">Puntaje: 0/0</div>
+                        </div>
+                        <div id="quiz-word" class="text-4xl font-bold text-center my-8 p-6 bg-stone-100 rounded-md"></div>
+                        <div id="quiz-options" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        <div id="quiz-feedback" class="mt-4 text-center font-semibold"></div>
+                        <button id="nextQuestionBtn" class="w-full mt-6 px-5 py-2.5 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 focus:ring-4 focus:outline-none focus:ring-teal-300 hidden">Siguiente Pregunta</button>
+                    </div>
+                </div>
+                 <div id="quiz-start-message" class="text-center p-8 text-stone-500">
+                    <p>Selecciona tus opciones y presiona "Comenzar Prueba" para iniciar.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const csvData = `"Rank","Spanish Word","Part of Speech","English Equivalent","Sample Sentence","Range Count","Raw Frequency","Register Variation"
+"1","el, la","art","the","esa mujer era la mujer que yo quería ser","100","2037803",""
+"2","de","prep","of, from","el hijo de un hermano mío","100","1319834",""
+"3","que","conj","that, which","dice que no","100","662653",""
+"4","y","conj","and","él y ella sabían leer y escribir","100","562162",""
+"5","a","prep","to, at","se fue a la cama","100","529899",""
+"6","en","prep","in, on","no está en la casa","100","507233",""
+"7","un","art","a, an","era un hombre simpático","100","434022",""
+"8","ser","v","to be (norm)","es nuevo, es bueno","100","374194","+o"
+"9","se","pron","[“reflexive” marker]","la abuela se acostó tranquila","100","329012",""
+"10","no","adv","no","no hay modo de negar nada","100","257365","+o"
+"11","haber","v","to have (+Ved)","no ha dicho nada","100","196962",""
+"12","por","prep","by, for, through","así fue por mucho tiempo","100","190975",""
+"13","con","prep","with","hay un hombre con ella","100","184597",""
+"14","su","adj","his/her/their/your (–fam)","¿quién era? ¿Su hermana? ¿Su amiga?","100","187810",""
+"15","para","prep","for, to, in order to","¡tengo una sorpresa sensacional para ti!","100","126061",""
+"16","como","conj","like, as","ser compositor en España es como ser torero en Finlandia","100","106840",""
+"17","estar","v","to be (location, change from norm)","él está en el trabajo","100","106429","+o"
+"18","tener","v","to have","estaba seguro de tener buena memoria","100","106642","+o"
+"19","le","pron","[3rd person] (indir obj)","nunca le dijo la verdad","100","98211",""
+"20","lo","art","the (+ n)","lo mejor es estudiar mucho","100","91035",""
+"21","lo","pron","[3rd person] (dir obj-m)","lo compré en la tienda","100","92519",""
+"22","todo","adj","all, every","todos los hombres son iguales","100","88057",""
+"23","pero","conj","but, yet, except","no significa nada para mí, pero no puedo olvidarla","100","82435","+o"
+"24","más","adj","more","él necesitaba más dinero","100","92352",""
+"25","hacer","v","to do, make","he podido hacer lo que me gusta","100","81619",""
+"26","o","conj","or","sí esperaba uno o dos muertos","100","82444",""
+"27","poder","v","to be able to; can","¡se hace lo que se puede!","100","76738",""
+"28","decir","v","to tell, say","parece que dice la verdad","100","79343","+o"
+"29","este","adj","this (m) [esta (f)]","y entendía estas cosas muy bien","100","80544",""
+"30","ir","v","to go","me habían invitado a ir a su casa","100","70352","+o"
+"31","otro","adj","other, another","¿por qué no podía ser otra cosa?","100","61726",""
+"32","ese","adj","that (m) [esa (f)]","¿dónde viven esas mujeres?","100","60989","+o"
+"33","la","pron","[3rd person] (dir obj-f)","la puso en su bolsillo","100","55523",""
+"34","si","conj","if, whether","si quiere cazar, vamos a cazar","100","53608",""
+"35","me","pron","me (obj)","¿cuando me va a llamar?","97","95577","+o"
+"36","ya","adv","already, still","su marido ya ha dicho todo","100","46778","+o"
+"37","ver","v","to see","había que subir para ver las ruinas","100","45854","+o"
+"38","porque","conj","because","lo vendo sólo porque tengo un apuro muy grande","100","44500","+o"
+"39","dar","v","to give","me dio esta carta para Ud.","100","40233",""
+"40","cuando","conj","when","aquella es de mis nietos, cuando eran bebés","100","39726",""
+"41","él","pron","he, [ellos] them (m)","él es bastante simpático","100","38597",""
+"42","muy","adv","very, really","está muy contento con mi trabajo","100","39558","+o"
+"43","sin","prep","without","se habían quedado sin dinero","100","40432",""
+"44","vez","nf","time (specific occurrence)","es la primera vez que estoy junto al mar","100","35286",""
+"45","mucho","adj","much, many, a lot (adv)","por lo visto tienen mucho dinero","100","36391","+o"
+"46","saber","v","to know (a fact), find out","ellos lo saben y lo reconocen","100","37092","+o"
+"47","qué","pron","what?, which?, how (+ adj)!","no sé qué voy a hacer","100","42000","+o"
+"48","sobre","prep","on top of, over, about","dejó el papel sobre la mesa y se fue","100","35038",""
+"49","mi","adj","my","mi casa es su casa","99","45636","+o"
+"50","alguno","adj","some, someone (pron)","habló algunas palabras con el agente de negocios","100","30485",""
+"51","mismo","adj","same","pronunciando el mismo discurso en siete idiomas","100","29569",""
+"52","yo","pron","I (subj)","¡Yo soy el padre!","98","54635","+o"
+"53","también","adv","also","y también van a estar los otros","100","33348",""
+"54","hasta","prep","until, up to, even (adv)","toda la noche, hasta las tres de la mañana","100","29506",""
+"55","año","nm","year","no lo supo hasta casi un año después","100","33053",""
+"56","dos","num","two","de allí salieron dos hermanas solteras","100","27733",""
+"57","querer","v","to want, love","quiero que este proceso salga con limpieza","100","28696","+o"
+"58","entre","prep","between, among","la cosa es entre tú y yo","100","30756",""
+"59","así","adv","like that","la vida es así","100","24832",""
+"60","primero","adj","first","las primeras palabras que nos enseñan a leer y escribir","100","26553",""
+"61","desde","prep","from, since","lo había pensado desde el primer momento","100","25288",""
+"62","grande","adj","large, great, big","lo ha mirado a los grandes ojos negros","100","25963",""
+"63","eso","pron","that (n)","y eso no es todo","99","31636","+o"
+"64","ni","conj","not even, neither, nor","pero ni eso me tranquilizó","100","24261",""
+"65","nos","pron","us (obj)","nos vio en la calle","99","26349","+o"
+"66","llegar","v","to arrive","como para llegar hasta el fondo de las almas","100","22878",""
+"67","pasar","v","to pass, spend (time)","tras la ventana lo veo pasar una y otra vez","100","22466",""
+"68","tiempo","nm","time (general), weather","he estado mucho tiempo con ella","100","22432",""
+"69","ella","pron","she, [ellas] them (f)","ella es muy estudiosa","100","24770",""
+"70","sí","adv","yes","quiero una respuesta concreta: sí o no","100","33828","+o"
+"71","día","nm","day","cada día hay más problemas","100","24715",""
+"72","uno","num","one","hay uno que ya lo está haciendo","100","21407","+o"
+"73","bien","adv","well","y entonces hice bien en quedarme","100","21589","+o"
+"74","poco","adj","little, few, a little bit (adv)","trabajó poco tiempo con él","100","20986",""
+"75","deber","v","should, ought to; to owe","te debes calmar, le aconsejó T.","100","22232",""
+"76","entonces","adv","so, then","vamos entonces a cambiarlo","100","23548","+o"
+"77","poner","v","to put (on), get (+adj)","puso el cuchillo en manos de M.","100","20330",""
+"78","cosa","nf","thing","estoy ya interesado en otra cosa","100","23943","+o"
+"79","tanto","adj","so much, so many","no podía creer que haya tanta gente junta","100","20531",""
+"80","hombre","nm","man, mankind, husband","yo soy un hombre de pocas necesidades","100","20292",""
+"81","parecer","v","to seem, look like","parecía dormir, tan inmóvil estaba","100","19964",""
+"82","nuestro","adj","our","no servía para nuestro país porque somos diferentes","100","20666",""
+"83","tan","adv","such, as, too, so","en esa mujer está todo; y por eso es tan maravillosa","100","19002",""
+"84","donde","conj","where","yo sé donde está la llave","100","18852",""
+"85","ahora","adv","now","lo importante ahora es contarte lo que le pasó","100","21030","+o"
+"86","parte","nf","part, portion","el arte es una parte tan importante de la cultura","100","20319",""
+"87","después","adv","after","vamos a dar un paseo después de comer","100","20229",""
+"88","vida","nf","life","ha dedicado toda la vida a la música","100","18045",""
+"89","quedar","v","to remain, stay","el aire empezó a quedarse quieto","100","18152",""
+"90","siempre","adv","always, forever","siempre ha sido así","100","17689",""
+"91","creer","v","to believe, think","creo en la justicia de Dios","100","21257","+o"
+"92","hablar","v","to speak, talk","algunos hablan el idioma romaní","100","19006","+o"
+"93","llevar","v","to take, carry","colgado al hombro llevaba un bolso","100","17062",""
+"94","dejar","v","to let, leave","ella no dejó que yo lo olvidara","100","18185",""
+"95","nada","pron","nothing, (not) at all","no hay nada que hacer","100","19365","+o"
+"96","cada","adj","each, every","de aprender cada día un poco más","100","17155",""
+"97","seguir","v","to follow, keep on","el calor sofocante que sigue al mediodía","100","16104",""
+"98","menos","adj","less, fewer","no vale más ni menos que la anterior","100","15527",""
+"99","nuevo","adj","new","marcaba el comienzo de una nueva vida para mí","100","17381",""
+"100","encontrar","v","to find","encontró un lugar apropiado para instalar la sucursal","100","15556",""
+...
+...
+"5000","cueva","nf","cave","es una pequeña cueva rodeada de inmensas rocas","58","210","+f -nf"
+`;
+        
+        let allWords = [];
+        let practiceWords = [];
+        
+        let currentCardIndex = 0;
+        
+        let quizState = {
+            questions: [],
+            currentQuestionIndex: 0,
+            score: 0,
+            correct: 0,
+            total: 0
+        };
+
+        const posMap = {
+            'adj': 'Adjetivo', 'adv': 'Adverbio', 'art': 'Artículo', 'conj': 'Conjunción',
+            'interj': 'Interjección', 'nc': 'Sustantivo (común)', 'nf': 'Sustantivo (fem)',
+            'nm': 'Sustantivo (masc)', 'nmf': 'Sustantivo (masc/fem)', 'nm/f': 'Sustantivo (masc/fem)',
+            'num': 'Número', 'prep': 'Preposición', 'pron': 'Pronombre', 'v': 'Verbo'
+        };
+
+        function parseCSV(data) {
+            const lines = data.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.replace(/"/g, ''));
+            const words = [];
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].match(/(?:"[^"]*"|[^,]+)/g).map(v => v.replace(/"/g, ''));
+                if (values && values.length === headers.length) {
+                    const wordObject = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        wordObject[headers[j]] = values[j] || '';
+                    }
+                    words.push(wordObject);
+                }
+            }
+            return words;
+        }
+        
+        function switchView(view) {
+            document.getElementById('flashcardView').classList.toggle('hidden', view !== 'flashcard');
+            document.getElementById('quizView').classList.toggle('hidden', view !== 'quiz');
+            document.getElementById('flashcardBtn').classList.toggle('active-nav', view === 'flashcard');
+            document.getElementById('flashcardBtn').classList.toggle('inactive-nav', view !== 'flashcard');
+            document.getElementById('quizBtn').classList.toggle('active-nav', view === 'quiz');
+            document.getElementById('quizBtn').classList.toggle('inactive-nav', view !== 'quiz');
+        }
+
+        function populateFilters() {
+            const partsOfSpeech = [...new Set(allWords.map(word => word['Part of Speech']))].sort();
+            const flashcardPosFilter = document.getElementById('flashcard-posFilter');
+            const quizPosFilter = document.getElementById('quiz-posFilter');
+            partsOfSpeech.forEach(pos => {
+                if (posMap[pos]) {
+                    const option1 = new Option(posMap[pos], pos);
+                    const option2 = new Option(posMap[pos], pos);
+                    flashcardPosFilter.add(option1);
+                    quizPosFilter.add(option2);
+                }
+            });
+        }
+        
+        function applyFlashcardFilters() {
+            const posFilter = document.getElementById('flashcard-posFilter').value;
+            const rankFilter = document.getElementById('flashcard-rankFilter').value.split('-').map(Number);
+
+            practiceWords = allWords.filter(word => {
+                const rank = parseInt(word.Rank);
+                const posMatch = posFilter ? word['Part of Speech'] === posFilter : true;
+                const rankMatch = rank >= rankFilter[0] && rank <= rankFilter[1];
+                return posMatch && rankMatch;
+            });
+            
+            currentCardIndex = 0;
+            updateFlashcard();
+            updateCardCounter();
+        }
+
+        function updateFlashcard() {
+            const card = document.getElementById('flashcard');
+            card.classList.remove('flipped');
+            
+            if (practiceWords.length === 0) {
+                 document.getElementById('flashcard-front').innerHTML = `<p class="text-xl text-stone-500">No hay palabras con esos filtros.</p>`;
+                document.getElementById('flashcard-back').innerHTML = '';
+                return;
+            }
+
+            const word = practiceWords[currentCardIndex];
+            document.getElementById('flashcard-front').innerHTML = `<h2 class="text-5xl font-bold">${word['Spanish Word']}</h2>`;
+            document.getElementById('flashcard-back').innerHTML = `
+                <h3 class="text-3xl font-bold mb-2">${word['English Equivalent']}</h3>
+                <p class="text-lg text-teal-700 font-semibold mb-4">${posMap[word['Part of Speech']] || word['Part of Speech']}</p>
+                <p class="text-md text-stone-600 italic text-center">"${word['Sample Sentence']}"</p>
+            `;
+        }
+        
+         function updateCardCounter() {
+            const counterEl = document.getElementById('card-counter');
+            const countEl = document.getElementById('flashcard-count');
+            if (practiceWords.length > 0) {
+                counterEl.textContent = `${currentCardIndex + 1} / ${practiceWords.length}`;
+                 countEl.textContent = `${practiceWords.length} tarjetas en este set.`;
+            } else {
+                counterEl.textContent = '0 / 0';
+                countEl.textContent = 'No hay tarjetas en este set.';
+            }
+        }
+        
+        function setupQuiz() {
+            const posFilter = document.getElementById('quiz-posFilter').value;
+            const rankFilter = document.getElementById('quiz-rankFilter').value.split('-').map(Number);
+
+            let quizWords = allWords.filter(word => {
+                const rank = parseInt(word.Rank);
+                const posMatch = posFilter ? word['Part of Speech'] === posFilter : true;
+                const rankMatch = rank >= rankFilter[0] && rank <= rankFilter[1];
+                return posMatch && rankMatch;
+            });
+
+            quizState.questions = quizWords.sort(() => 0.5 - Math.random());
+            quizState.currentQuestionIndex = 0;
+            quizState.correct = 0;
+            quizState.total = 0;
+            
+            document.getElementById('quiz-start-message').classList.add('hidden');
+            document.getElementById('quiz-container').classList.remove('hidden');
+
+            generateQuestion();
+        }
+        
+        function generateQuestion() {
+            if (quizState.currentQuestionIndex >= quizState.questions.length) {
+                document.getElementById('quiz-word').textContent = '¡Prueba Completada!';
+                document.getElementById('quiz-options').innerHTML = '';
+                document.getElementById('quiz-feedback').textContent = `Resultado final: ${quizState.correct} de ${quizState.total} correctas.`;
+                document.getElementById('nextQuestionBtn').classList.add('hidden');
+                document.getElementById('startQuizBtn').textContent = 'Comenzar de Nuevo';
+                document.getElementById('startQuizBtn').classList.remove('hidden');
+                return;
+            }
+
+            const currentWord = quizState.questions[quizState.currentQuestionIndex];
+            let options = [currentWord];
+            
+            let distractors = allWords.filter(w => w.Rank !== currentWord.Rank && w['Part of Speech'] === currentWord['Part of Speech']);
+            distractors.sort(() => 0.5 - Math.random());
+            
+            for(let i = 0; options.length < 4 && i < distractors.length; i++) {
+                if(!options.find(o => o.Rank === distractors[i].Rank)) {
+                     options.push(distractors[i]);
+                }
+            }
+             while(options.length < 4) {
+                let randomWord = allWords[Math.floor(Math.random() * allWords.length)];
+                 if(!options.find(o => o.Rank === randomWord.Rank)) {
+                     options.push(randomWord);
+                 }
+            }
+
+
+            options.sort(() => 0.5 - Math.random());
+
+            document.getElementById('quiz-word').textContent = currentWord['Spanish Word'];
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            options.forEach(opt => {
+                const button = document.createElement('button');
+                button.className = 'p-4 border border-stone-300 rounded-md text-left hover:bg-stone-100 disabled:opacity-75';
+                button.textContent = opt['English Equivalent'];
+                button.dataset.rank = opt.Rank;
+                button.addEventListener('click', checkAnswer);
+                optionsContainer.appendChild(button);
+            });
+            
+            document.getElementById('quiz-feedback').textContent = '';
+            document.getElementById('nextQuestionBtn').classList.add('hidden');
+            document.getElementById('startQuizBtn').classList.add('hidden');
+            updateScore();
+        }
+        
+        function checkAnswer(event) {
+            const selectedRank = event.target.dataset.rank;
+            const correctRank = quizState.questions[quizState.currentQuestionIndex].Rank;
+            
+            const options = document.querySelectorAll('#quiz-options button');
+            options.forEach(btn => {
+                btn.disabled = true;
+                if (btn.dataset.rank === correctRank) {
+                    btn.classList.add('correct-answer');
+                }
+            });
+            
+            quizState.total++;
+            if (selectedRank === correctRank) {
+                quizState.correct++;
+                document.getElementById('quiz-feedback').textContent = '¡Correcto!';
+                document.getElementById('quiz-feedback').className = 'mt-4 text-center font-semibold text-green-600';
+            } else {
+                event.target.classList.add('wrong-answer');
+                document.getElementById('quiz-feedback').textContent = `Incorrecto. La respuesta era "${quizState.questions[quizState.currentQuestionIndex]['English Equivalent']}".`;
+                 document.getElementById('quiz-feedback').className = 'mt-4 text-center font-semibold text-red-600';
+            }
+            
+            updateScore();
+            document.getElementById('nextQuestionBtn').classList.remove('hidden');
+        }
+
+        function updateScore() {
+            document.getElementById('quiz-score').textContent = `Puntaje: ${quizState.correct}/${quizState.total}`;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            allWords = parseCSV(csvData);
+            populateFilters();
+            applyFlashcardFilters();
+            
+            document.getElementById('flashcardBtn').addEventListener('click', () => switchView('flashcard'));
+            document.getElementById('quizBtn').addEventListener('click', () => switchView('quiz'));
+
+            document.getElementById('flashcard').addEventListener('click', () => {
+                document.getElementById('flashcard').classList.toggle('flipped');
+            });
+            
+            document.getElementById('nextCard').addEventListener('click', () => {
+                currentCardIndex = (currentCardIndex + 1) % practiceWords.length;
+                updateFlashcard();
+                updateCardCounter();
+            });
+
+            document.getElementById('prevCard').addEventListener('click', () => {
+                currentCardIndex = (currentCardIndex - 1 + practiceWords.length) % practiceWords.length;
+                updateFlashcard();
+                updateCardCounter();
+            });
+
+            document.getElementById('flashcard-posFilter').addEventListener('change', applyFlashcardFilters);
+            document.getElementById('flashcard-rankFilter').addEventListener('change', applyFlashcardFilters);
+            
+            document.getElementById('startQuizBtn').addEventListener('click', setupQuiz);
+            document.getElementById('nextQuestionBtn').addEventListener('click', () => {
+                quizState.currentQuestionIndex++;
+                generateQuestion();
+            });
+
+            document.getElementById('quiz-posFilter').addEventListener('change', () => {
+                 document.getElementById('quiz-container').classList.add('hidden');
+                 document.getElementById('quiz-start-message').classList.remove('hidden');
+            });
+            document.getElementById('quiz-rankFilter').addEventListener('change', () => {
+                document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('quiz-start-message').classList.remove('hidden');
+            });
+
+        });
+    </script>
+</body>
+</html>
